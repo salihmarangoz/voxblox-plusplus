@@ -24,6 +24,7 @@
 #include <vpp_msgs/GetListSemanticInstances.h>
 #include <vpp_msgs/GetMap.h>
 #include <vpp_msgs/GetScenePointcloud.h>
+#include <vpp_msgs/GetListInstancePointclouds.h>
 
 namespace voxblox {
 namespace voxblox_gsm {
@@ -46,6 +47,8 @@ class Controller {
   void advertiseSceneCloudTopic();
 
   void advertiseBboxTopic();
+
+  void advertiseIntgeratedInstanceCloudTopic();
 
   void advertiseResetMapService(ros::ServiceServer* reset_map_srv);
 
@@ -70,6 +73,9 @@ class Controller {
 
   void advertiseGetAlignedInstanceBoundingBoxService(
       ros::ServiceServer* get_instance_bounding_box_srv);
+
+  void advertiseGetListInstancePointcloudsService(
+      ros::ServiceServer* get_list_instance_pointclouds_srv);
 
   bool enable_semantic_instance_segmentation_;
 
@@ -117,6 +123,11 @@ class Controller {
   bool getAlignedInstanceBoundingBoxCallback(
       vpp_msgs::GetAlignedInstanceBoundingBox::Request& request,
       vpp_msgs::GetAlignedInstanceBoundingBox::Response& response);
+
+  bool getListInstancePointcloudsCallback(
+      vpp_msgs::GetListInstancePointclouds::Request& request,
+      vpp_msgs::GetListInstancePointclouds::Response& response);
+
 
   bool lookupTransform(const std::string& from_frame,
                        const std::string& to_frame, const ros::Time& timestamp,
@@ -190,6 +201,8 @@ class Controller {
   ros::Publisher* scene_mesh_pub_;
   ros::Publisher* scene_cloud_pub_;
   ros::Publisher* bbox_pub_;
+  ros::Publisher* integrated_instancecloud_pub_;
+
 
   std::thread viz_thread_;
   Visualizer* visualizer_;

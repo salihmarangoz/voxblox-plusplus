@@ -61,13 +61,17 @@ int main(int argc, char** argv) {
   ros::ServiceServer extract_instances_srv;
   ros::ServiceServer get_list_semantic_instances_srv;
   ros::ServiceServer get_instance_bounding_box_srv;
+  ros::ServiceServer get_list_instance_pointclouds_srv;
 
   if (controller->enable_semantic_instance_segmentation_) {
+    controller->advertiseIntgeratedInstanceCloudTopic();
     controller->advertiseExtractInstancesService(&extract_instances_srv);
     controller->advertiseGetListSemanticInstancesService(
         &get_list_semantic_instances_srv);
     controller->advertiseGetAlignedInstanceBoundingBoxService(
         &get_instance_bounding_box_srv);
+    controller->advertiseGetListInstancePointcloudsService(
+        &get_list_instance_pointclouds_srv);
   }
 
   // Spinner that uses a number of threads equal to the number of cores.

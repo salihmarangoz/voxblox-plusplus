@@ -38,87 +38,90 @@ namespace voxblox {
 namespace voxblox_gsm {
 
 // TODO(ntonci): Move this to a separate header.
-std::string classes[81] = {"BG",
-                           "person",
-                           "bicycle",
-                           "car",
-                           "motorcycle",
-                           "airplane",
-                           "bus",
-                           "train",
-                           "truck",
-                           "boat",
-                           "traffic light",
-                           "fire hydrant",
-                           "stop sign",
-                           "parking meter",
-                           "bench",
-                           "bird",
-                           "cat",
-                           "dog",
-                           "horse",
-                           "sheep",
-                           "cow",
-                           "elephant",
-                           "bear",
-                           "zebra",
-                           "giraffe",
-                           "backpack",
-                           "umbrella",
-                           "handbag",
-                           "tie",
-                           "suitcase",
-                           "frisbee",
-                           "skis",
-                           "snowboard",
-                           "sports ball",
-                           "kite",
-                           "baseball bat",
-                           "baseball glove",
-                           "skateboard",
-                           "surfboard",
-                           "tennis racket",
-                           "bottle",
-                           "wine glass",
-                           "cup",
-                           "fork",
-                           "knife",
-                           "spoon",
-                           "bowl",
-                           "banana",
-                           "apple",
-                           "sandwich",
-                           "orange",
-                           "broccoli",
-                           "carrot",
-                           "hot dog",
-                           "pizza",
-                           "donut",
-                           "cake",
-                           "chair",
-                           "couch",
-                           "potted plant",
-                           "bed",
-                           "dining table",
-                           "toilet",
-                           "tv",
-                           "laptop",
-                           "mouse",
-                           "remote",
-                           "keyboard",
-                           "cell phone",
-                           "microwave",
-                           "oven",
-                           "toaster",
-                           "sink",
-                           "refrigerator",
-                           "book",
-                           "clock",
-                           "vase",
-                           "scissors",
-                           "teddy bear",
-                           "hair drier",
-                           "toothbrush"};
+// std::string classes[81] = {"BG",
+//                            "person",
+//                            "bicycle",
+//                            "car",
+//                            "motorcycle",
+//                            "airplane",
+//                            "bus",
+//                            "train",
+//                            "truck",
+//                            "boat",
+//                            "traffic light",
+//                            "fire hydrant",
+//                            "stop sign",
+//                            "parking meter",
+//                            "bench",
+//                            "bird",
+//                            "cat",
+//                            "dog",
+//                            "horse",
+//                            "sheep",
+//                            "cow",
+//                            "elephant",
+//                            "bear",
+//                            "zebra",
+//                            "giraffe",
+//                            "backpack",
+//                            "umbrella",
+//                            "handbag",
+//                            "tie",
+//                            "suitcase",
+//                            "frisbee",
+//                            "skis",
+//                            "snowboard",
+//                            "sports ball",
+//                            "kite",
+//                            "baseball bat",
+//                            "baseball glove",
+//                            "skateboard",
+//                            "surfboard",
+//                            "tennis racket",
+//                            "bottle",
+//                            "wine glass",
+//                            "cup",
+//                            "fork",
+//                            "knife",
+//                            "spoon",
+//                            "bowl",
+//                            "banana",
+//                            "apple",
+//                            "sandwich",
+//                            "orange",
+//                            "broccoli",
+//                            "carrot",
+//                            "hot dog",
+//                            "pizza",
+//                            "donut",
+//                            "cake",
+//                            "chair",
+//                            "couch",
+//                            "potted plant",
+//                            "bed",
+//                            "dining table",
+//                            "toilet",
+//                            "tv",
+//                            "laptop",
+//                            "mouse",
+//                            "remote",
+//                            "keyboard",
+//                            "cell phone",
+//                            "microwave",
+//                            "oven",
+//                            "toaster",
+//                            "sink",
+//                            "refrigerator",
+//                            "book",
+//                            "clock",
+//                            "vase",
+//                            "scissors",
+//                            "teddy bear",
+//                            "hair drier",
+//                            "toothbrush"};
+
+std::string classes[2] = {"background", "pepper"};
+
 
 Controller::Controller(ros::NodeHandle* node_handle_private)
     : node_handle_private_(node_handle_private),
@@ -363,6 +366,12 @@ void Controller::advertiseBboxTopic() {
                                                                   true));
 }
 
+void Controller::advertiseIntgeratedInstanceCloudTopic(){
+  integrated_instancecloud_pub_ = new ros::Publisher(
+    node_handle_private_->advertise<pcl::PointCloud<pcl::PointXYZRGB>>(
+        "instance_cloud", 1, true));
+}
+
 void Controller::advertiseResetMapService(ros::ServiceServer* reset_map_srv) {
   CHECK_NOTNULL(reset_map_srv);
   *reset_map_srv = node_handle_private_->advertiseService(
@@ -424,6 +433,14 @@ void Controller::advertiseGetAlignedInstanceBoundingBoxService(
   *get_instance_bounding_box_srv = node_handle_private_->advertiseService(
       "get_aligned_instance_bbox",
       &Controller::getAlignedInstanceBoundingBoxCallback, this);
+}
+
+void Controller::advertiseGetListInstancePointcloudsService(
+    ros::ServiceServer* get_list_instance_pointclouds_srv){
+  CHECK_NOTNULL(get_list_instance_pointclouds_srv);
+  *get_list_instance_pointclouds_srv = node_handle_private_->advertiseService(
+      "get_list_instance_pointclouds",
+      &Controller::getListInstancePointcloudsCallback, this);
 }
 
 void Controller::processSegment(
@@ -793,6 +810,7 @@ bool Controller::getAlignedInstanceBoundingBoxCallback(
     // Get list of all instances in the map.
     all_instance_labels = map_->getInstanceList();
   }
+
   // Check if queried instance id is in the list of instance ids in the map.
   auto instance_label_it = std::find(all_instance_labels.begin(),
                                      all_instance_labels.end(), instance_label);
@@ -1088,5 +1106,69 @@ void Controller::computeAlignedBoundingBox(
 #endif
 }
 
+bool Controller::getListInstancePointcloudsCallback(
+      vpp_msgs::GetListInstancePointclouds::Request& request,
+      vpp_msgs::GetListInstancePointclouds::Response& response)
+{
+  InstanceLabels all_instance_labels, instance_labels;
+  std::unordered_map<InstanceLabel, LabelTsdfMap::LayerPair>
+      instance_label_to_layers;
+  for(size_t i = 0; i < request.instance_ids.size(); i++)    
+  {
+    InstanceLabel instance_label = request.instance_ids[i];
+    {
+      std::lock_guard<std::mutex> label_tsdf_layers_lock(
+          label_tsdf_layers_mutex_);
+      // Get list of all instances in the map.
+      all_instance_labels = map_->getInstanceList();
+    }
+
+    // Check if queried instance id is in the list of instance ids in the map.
+    auto instance_label_it = std::find(all_instance_labels.begin(),
+                                      all_instance_labels.end(), instance_label);
+
+    if (instance_label_it == all_instance_labels.end()) {
+      LOG(ERROR) << "The queried instance ID does not exist in the map.";
+      continue;
+    }
+    instance_labels.push_back(instance_label);
+  }
+  bool kSaveSegmentsAsPly = false;
+  extractInstanceSegments(instance_labels, kSaveSegmentsAsPly,
+                          &instance_label_to_layers);
+
+  pcl::PointCloud<pcl::PointSurfel>::Ptr integrated_pointcloud(
+        new pcl::PointCloud<pcl::PointSurfel>);
+
+  sensor_msgs::PointCloud2 integrated_pointcloud_msg;
+  for (const InstanceLabel instance_label : instance_labels) 
+  {
+    auto it = instance_label_to_layers.find(instance_label);
+    CHECK(it != instance_label_to_layers.end())
+        << "Layers for instance label " << instance_label
+        << " could not be extracted.";
+
+    const Layer<TsdfVoxel>& segment_tsdf_layer = it->second.first;
+    const Layer<LabelVoxel>& segment_label_layer = it->second.second;
+
+    pcl::PointCloud<pcl::PointSurfel>::Ptr instance_pointcloud(
+        new pcl::PointCloud<pcl::PointSurfel>);
+
+    convertVoxelGridToPointCloud(segment_tsdf_layer, mesh_config_,
+                                instance_pointcloud.get());
+
+
+    instance_pointcloud->header.frame_id = world_frame_;
+    sensor_msgs::PointCloud2 pc_msg;
+    pcl::toROSMsg(*instance_pointcloud, pc_msg);
+    response.instance_clouds.push_back(pc_msg);
+
+    *integrated_pointcloud += *instance_pointcloud;
+  }  
+  integrated_pointcloud->header.frame_id = world_frame_;
+  pcl::toROSMsg(*integrated_pointcloud, integrated_pointcloud_msg);
+  integrated_instancecloud_pub_->publish(integrated_pointcloud_msg);
+  return true;
+}
 }  // namespace voxblox_gsm
 }  // namespace voxblox
