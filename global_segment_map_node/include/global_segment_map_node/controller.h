@@ -77,6 +77,8 @@ class Controller {
   void advertiseGetListInstancePointcloudsService(
       ros::ServiceServer* get_list_instance_pointclouds_srv);
 
+  void timerGetScenePointCloud(const ros::TimerEvent& event);
+
   bool enable_semantic_instance_segmentation_;
 
   bool publish_scene_map_;
@@ -203,6 +205,8 @@ class Controller {
   ros::Publisher* bbox_pub_;
   ros::Publisher* integrated_instancecloud_pub_;
 
+  ros::Publisher list_instance_clouds_pub_;
+
 
   std::thread viz_thread_;
   Visualizer* visualizer_;
@@ -211,6 +215,8 @@ class Controller {
   bool mesh_layer_updated_;
   bool need_full_remesh_;
   bool multiple_visualizers_;
+
+  ros::Timer timer_scene_pc_;
 };
 
 }  // namespace voxblox_gsm

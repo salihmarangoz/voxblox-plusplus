@@ -29,6 +29,9 @@
 #include <voxblox/io/sdf_ply.h>
 #include <voxblox_ros/mesh_vis.h>
 #include "global_segment_map_node/conversions.h"
+#include <pcl/common/centroid.h>
+#include <pcl/common/transforms.h>
+#include <vpp_msgs/InstancePointcloudwithCentroidArray.h>
 
 #ifdef APPROXMVBB_AVAILABLE
 #include <ApproxMVBB/ComputeApproxMVBB.hpp>
@@ -321,6 +324,9 @@ Controller::Controller(ros::NodeHandle* node_handle_private)
 
   node_handle_private_->param<std::string>("meshing/mesh_filename",
                                            mesh_filename_, mesh_filename_);
+
+  timer_scene_pc_ = node_handle_private_->createTimer(ros::Duration(5.0), &Controller::timerGetScenePointCloud, this);
+  list_instance_clouds_pub_ = node_handle_private_->advertise<vpp_msgs::InstancePointcloudwithCentroidArray>("list_instance_pointclouds", 1, true);
 }
 
 Controller::~Controller() { viz_thread_.join(); }
@@ -341,6 +347,35 @@ void Controller::subscribeSegmentPointCloudTopic(
   *segment_point_cloud_sub = node_handle_private_->subscribe(
       segment_point_cloud_topic, kSegmentPointCloudQueueSize,
       &Controller::segmentPointCloudCallback, this);
+}
+
+void Controller::timerGetScenePointCloud(const ros::TimerEvent& event)
+{
+  // vpp_msgs::GetScenePointcloud srv_scene_cloud;
+
+  // auto client_get_scene_cloud = node_handle_private_->serviceClient<vpp_msgs::GetScenePointcloud>("get_scene_pointcloud");  
+  // if(client_get_scene_cloud.call(srv_scene_cloud) == false)
+  // {
+  //   ROS_ERROR("Error in getting scene pointcloud");
+  // }
+  
+  auto client_get_instance_pointclouds = node_handle_private_->serviceClient<vpp_msgs::GetListInstancePointclouds>("/gsm_node/get_list_instance_pointclouds");  
+  vpp_msgs::GetListInstancePointclouds srv;
+  srv.request.get_specific_instances = false;
+  if(client_get_instance_pointclouds.call(srv))
+  {
+      ROS_INFO("Get Instance PC call successful");
+      vpp_msgs::InstancePointcloudwithCentroidArray list;
+      list.instance_clouds_with_centroid = srv.response.instance_clouds_with_centroid;
+      //list_instance_clouds.insert(list_instance_clouds.end(), srv.response.instance_clouds_with_centroid.begin(), srv.response.instance_clouds_with_centroid.end());
+      list_instance_clouds_pub_.publish(list);
+      return;
+  }
+  else
+  {
+    ROS_ERROR("Error in getting list of instance point clouds");
+  }
+
 }
 
 void Controller::advertiseMapTopic() {
@@ -1110,29 +1145,37 @@ bool Controller::getListInstancePointcloudsCallback(
       vpp_msgs::GetListInstancePointclouds::Request& request,
       vpp_msgs::GetListInstancePointclouds::Response& response)
 {
+  ROS_WARN("Service call");
   InstanceLabels all_instance_labels, instance_labels;
   std::unordered_map<InstanceLabel, LabelTsdfMap::LayerPair>
       instance_label_to_layers;
-  for(size_t i = 0; i < request.instance_ids.size(); i++)    
   {
-    InstanceLabel instance_label = request.instance_ids[i];
-    {
-      std::lock_guard<std::mutex> label_tsdf_layers_lock(
-          label_tsdf_layers_mutex_);
-      // Get list of all instances in the map.
-      all_instance_labels = map_->getInstanceList();
-    }
-
-    // Check if queried instance id is in the list of instance ids in the map.
-    auto instance_label_it = std::find(all_instance_labels.begin(),
-                                      all_instance_labels.end(), instance_label);
-
-    if (instance_label_it == all_instance_labels.end()) {
-      LOG(ERROR) << "The queried instance ID does not exist in the map.";
-      continue;
-    }
-    instance_labels.push_back(instance_label);
+    std::lock_guard<std::mutex> label_tsdf_layers_lock(
+        label_tsdf_layers_mutex_);
+    // Get list of all instances in the map.
+    all_instance_labels = map_->getInstanceList();
   }
+  if(request.get_specific_instances)
+  {
+    for(size_t i = 0; i < request.instance_ids.size(); i++)    
+    {
+      InstanceLabel instance_label = request.instance_ids[i];
+        // Check if queried instance id is in the list of instance ids in the map.
+        auto instance_label_it = std::find(all_instance_labels.begin(),
+                                        all_instance_labels.end(), instance_label);
+
+        if (instance_label_it == all_instance_labels.end()) {
+          LOG(ERROR) << "The queried instance ID does not exist in the map.";
+          continue;
+        }
+        instance_labels.push_back(instance_label);
+    }
+  }
+  else
+  {
+    instance_labels.insert(instance_labels.end(), all_instance_labels.begin(), all_instance_labels.end());
+  }
+  
   bool kSaveSegmentsAsPly = false;
   extractInstanceSegments(instance_labels, kSaveSegmentsAsPly,
                           &instance_label_to_layers);
@@ -1159,9 +1202,18 @@ bool Controller::getListInstancePointcloudsCallback(
 
 
     instance_pointcloud->header.frame_id = world_frame_;
-    sensor_msgs::PointCloud2 pc_msg;
-    pcl::toROSMsg(*instance_pointcloud, pc_msg);
-    response.instance_clouds.push_back(pc_msg);
+    vpp_msgs::InstancePointcloudwithCentroid instance_pc_msg_with_centroid;
+    pcl::toROSMsg(*instance_pointcloud, instance_pc_msg_with_centroid.pointcloud);
+
+    Eigen::Vector4f centroid;
+    pcl::compute3DCentroid(*instance_pointcloud, centroid);
+    instance_pc_msg_with_centroid.centroid.x = centroid(0);
+    instance_pc_msg_with_centroid.centroid.y = centroid(1);
+    instance_pc_msg_with_centroid.centroid.z = centroid(2);
+
+    instance_pc_msg_with_centroid.num_points = instance_pointcloud->size();
+
+    response.instance_clouds_with_centroid.push_back(instance_pc_msg_with_centroid);
 
     *integrated_pointcloud += *instance_pointcloud;
   }  
