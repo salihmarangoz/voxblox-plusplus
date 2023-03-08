@@ -32,6 +32,11 @@
 #include <pcl/common/centroid.h>
 #include <pcl/common/transforms.h>
 #include <vpp_msgs/InstancePointcloudwithCentroidArray.h>
+#include <pcl/search/search.h>
+#include <pcl/search/kdtree.h>
+#include <pcl/filters/extract_indices.h>
+#include <pcl/filters/conditional_removal.h>
+#include <pcl/kdtree/impl/kdtree_flann.hpp>
 
 #ifdef APPROXMVBB_AVAILABLE
 #include <ApproxMVBB/ComputeApproxMVBB.hpp>
@@ -325,7 +330,7 @@ Controller::Controller(ros::NodeHandle* node_handle_private)
   node_handle_private_->param<std::string>("meshing/mesh_filename",
                                            mesh_filename_, mesh_filename_);
 
-  timer_scene_pc_ = node_handle_private_->createTimer(ros::Duration(5.0), &Controller::timerGetScenePointCloud, this);
+  timer_scene_pc_ = node_handle_private_->createTimer(ros::Duration(4.0), &Controller::timerGetScenePointCloud, this);
   list_instance_clouds_pub_ = node_handle_private_->advertise<vpp_msgs::InstancePointcloudwithCentroidArray>("list_instance_pointclouds", 1, true);
 }
 
@@ -343,7 +348,7 @@ void Controller::subscribeSegmentPointCloudTopic(
   // refactored to be received as one single message.
   // Large queue size to give slack to the
   // pipeline and not lose any messages.
-  constexpr int kSegmentPointCloudQueueSize = 6000;
+  constexpr int kSegmentPointCloudQueueSize = 1000;
   *segment_point_cloud_sub = node_handle_private_->subscribe(
       segment_point_cloud_topic, kSegmentPointCloudQueueSize,
       &Controller::segmentPointCloudCallback, this);
@@ -616,6 +621,7 @@ void Controller::integrateFrame(ros::Time msg_timestamp) {
 
 void Controller::segmentPointCloudCallback(
     const sensor_msgs::PointCloud2::Ptr& segment_point_cloud_msg) {
+  //LOG(INFO)<<"segmentPointCloudCallback";    
   if (!integration_on_) {
     return;
   }
@@ -1202,6 +1208,10 @@ bool Controller::getListInstancePointcloudsCallback(
 
 
     instance_pointcloud->header.frame_id = world_frame_;
+    std::shared_ptr<std::vector<int>> indices(new std::vector<int>);
+    pcl::removeNaNFromPointCloud(*instance_pointcloud, *instance_pointcloud, *indices);
+    if(instance_pointcloud->points.size() < 20)
+      continue;
     vpp_msgs::InstancePointcloudwithCentroid instance_pc_msg_with_centroid;
     pcl::toROSMsg(*instance_pointcloud, instance_pc_msg_with_centroid.pointcloud);
 
