@@ -7,7 +7,20 @@ if (NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
 endif()
 
 find_package(catkin_simple REQUIRED)
+find_package(PCL REQUIRED)
 catkin_simple(ALL_DEPS_REQUIRED)
+
+include_directories(
+  ${PCL_INCLUDE_DIRS}
+)
+
+link_directories(
+  ${PCL_LIBRARY_DIRS}
+)
+
+add_definitions(
+  ${PCL_DEFINITIONS}
+)
 
 cs_add_library(${PROJECT_NAME}
   src/label_block_serialization.cc
@@ -23,6 +36,8 @@ cs_add_library(${PROJECT_NAME}
   src/segment.cc
   src/utils/visualizer.cc
 )
+
+target_link_libraries(${PROJECT_NAME} ${PCL_LIBRARIES})
 
 cs_install()
 cs_export()
