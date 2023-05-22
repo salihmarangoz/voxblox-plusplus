@@ -7,6 +7,8 @@ SemanticColorMap SemanticColorMap::create(const ClassTask& class_task) {
       return CocoColorMap();
     case kNyu13:
       return Nyu13ColorMap();
+    default:
+      return CocoColorMap(); // Defaulting to CocoColorMap for invalid enum
   }
 }
 

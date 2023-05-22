@@ -741,7 +741,7 @@ void LabelTsdfIntegrator::swapLabels(const Label& old_label,
         changeLabelCount(updated_label, 1);
 
         changeLabelCount(previous_label, -1);
-        if (!tsdf_block->updated()) {
+        if (tsdf_block->updated().none()) {
           label_block->updated() = true;
         }
       }
