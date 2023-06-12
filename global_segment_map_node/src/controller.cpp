@@ -330,7 +330,7 @@ Controller::Controller(ros::NodeHandle* node_handle_private)
   node_handle_private_->param<std::string>("meshing/mesh_filename",
                                            mesh_filename_, mesh_filename_);
 
-  timer_scene_pc_ = node_handle_private_->createTimer(ros::Duration(4.0), &Controller::timerGetScenePointCloud, this);
+  //timer_scene_pc_ = node_handle_private_->createTimer(ros::Duration(4.0), &Controller::timerGetScenePointCloud, this);
   list_instance_clouds_pub_ = node_handle_private_->advertise<vpp_msgs::InstancePointcloudwithCentroidArray>("list_instance_pointclouds", 1, true);
 }
 
@@ -643,6 +643,7 @@ void Controller::segmentPointCloudCallback(
   last_segment_msg_timestamp_ = segment_point_cloud_msg->header.stamp;
 
   processSegment(segment_point_cloud_msg);
+  ros::Duration(0.02).sleep();
 }
 
 void Controller::resetMeshIntegrators() {
