@@ -76,6 +76,9 @@ class LabelTsdfMap {
   void getSemanticInstanceList(InstanceLabels* instance_labels,
                                SemanticLabels* semantic_labels);
 
+  void getSemanticInstanceList(std::vector<uint16_t>* instance_labels,
+                               SemanticLabels* semantic_labels);
+
   /**
    * Extracts separate tsdf and label layers from the gsm, for every given
    * label.

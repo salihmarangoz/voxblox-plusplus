@@ -36,6 +36,20 @@ InstanceLabels LabelTsdfMap::getInstanceList() {
   return instance_labels;
 }
 
+// overriding the function to solve uint16_t/uint32_t typecast problem
+void LabelTsdfMap::getSemanticInstanceList(std::vector<uint16_t>* instance_labels,
+                                           SemanticLabels* semantic_labels) {
+  InstanceLabels *instance_labels_other = new InstanceLabels();
+  instance_labels_other->resize(instance_labels->size());
+  for (int i=0; i<instance_labels->size(); i++)
+  {
+    (*instance_labels_other)[i] = (*instance_labels)[i];
+  }
+  getSemanticInstanceList(instance_labels_other, semantic_labels);
+  delete instance_labels_other;
+}
+
+
 void LabelTsdfMap::getSemanticInstanceList(InstanceLabels* instance_labels,
                                            SemanticLabels* semantic_labels) {
   std::set<InstanceLabel> instance_labels_set;
